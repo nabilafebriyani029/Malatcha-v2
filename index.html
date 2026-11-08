@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Malatcha Photo Corner (Instant, Contrast, Matcha Style)</title>
+    <style>
+        /* --- CSS DASAR --- */
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { isolation: isolate; background: radial-gradient(ellipse at top, #ffffff 0%, #f1f1ef 48%, #dedfdd 100%); color: #fff; display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; min-height: 100vh; overflow-x: hidden; }
+        .bubble-layer { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+        .bubble-layer::before, .bubble-layer::after { content: ""; position: absolute; width: min(72vw, 760px); aspect-ratio: 1; border-radius: 50%; filter: blur(55px); opacity: 0.55; }
+        .bubble-layer::before { top: -38%; left: -20%; background: radial-gradient(circle, rgba(210, 230, 194, 0.72), rgba(232, 239, 223, 0.26) 45%, transparent 72%); animation: light-drift 18s ease-in-out infinite alternate; }
+        .bubble-layer::after { right: -24%; bottom: -42%; background: radial-gradient(circle, rgba(224, 232, 213, 0.8), rgba(241, 242, 232, 0.28) 48%, transparent 72%); animation: light-drift 23s ease-in-out -8s infinite alternate-reverse; }
+        .bubble { position: absolute; z-index: 1; bottom: -100px; left: var(--left); width: var(--size); aspect-ratio: 1; border: 1px solid rgba(104, 139, 77, 0.48); border-radius: 50%; background: radial-gradient(circle at 32% 28%, rgba(248, 255, 233, 0.58), rgba(166, 194, 131, 0.3) 38%, rgba(113, 148, 83, 0.16) 68%, rgba(113, 148, 83, 0.05) 78%); box-shadow: inset -3px -4px 10px rgba(104, 139, 77, 0.16), 0 0 18px rgba(128, 161, 98, 0.18); animation: bubble-rise var(--duration) linear var(--delay) infinite; }
+        .bubble:nth-child(3n) { width: calc(var(--size) * 0.65); }
+        .bubble:nth-child(4n) { border-color: rgba(139, 160, 81, 0.5); background: radial-gradient(circle at 32% 28%, rgba(255, 255, 232, 0.58), rgba(194, 198, 129, 0.28) 40%, rgba(143, 157, 83, 0.15) 70%, rgba(143, 157, 83, 0.05) 80%); }
+        .cursor-bubble { position: absolute; z-index: 2; left: var(--x); top: var(--y); width: var(--size); aspect-ratio: 1; border: 1px solid rgba(104, 139, 77, 0.58); border-radius: 50%; background: radial-gradient(circle at 32% 28%, rgba(248, 255, 233, 0.72), rgba(166, 194, 131, 0.38) 42%, rgba(113, 148, 83, 0.12) 76%); box-shadow: inset -3px -4px 10px rgba(104, 139, 77, 0.2), 0 0 18px rgba(128, 161, 98, 0.25); animation: cursor-bubble-pop 1.15s ease-out forwards; }
+        .cursor-bubble.burst { z-index: 3; animation: cursor-bubble-burst 360ms ease-out forwards; }
+        .bubble-spark { position: absolute; z-index: 3; left: var(--x); top: var(--y); width: 10px; height: 10px; border: 1px solid rgba(104, 139, 77, 0.52); border-radius: 50%; background: rgba(166, 194, 131, 0.58); box-shadow: 0 0 8px rgba(128, 161, 98, 0.35); animation: bubble-spark-burst 520ms ease-out forwards; }
+        h1, .main-layout { position: relative; z-index: 1; }
+        @keyframes light-drift { from { transform: translate3d(-4%, 0, 0) scale(0.9); } to { transform: translate3d(12%, 9%, 0) scale(1.12); } }
+        @keyframes bubble-rise { 0% { transform: translate3d(0, 0, 0) scale(0.75); opacity: 0; } 12% { opacity: 0.75; } 50% { transform: translate3d(24px, -55vh, 0) scale(1); } 88% { opacity: 0.55; } 100% { transform: translate3d(-18px, -115vh, 0) scale(1.12); opacity: 0; } }
+        @keyframes cursor-bubble-pop { 0% { transform: translate(-50%, -40%) scale(0.35); opacity: 0; } 18% { opacity: 0.85; } 100% { transform: translate(calc(-50% + 24px), calc(-50% - 72px)) scale(1.15); opacity: 0; } }
+        @keyframes cursor-bubble-burst { 0% { transform: translate(-50%, -50%) scale(1); opacity: 0.88; } 55% { transform: translate(-50%, -50%) scale(1.28); opacity: 0.7; } 100% { transform: translate(-50%, -50%) scale(0.08); opacity: 0; } }
+        @keyframes bubble-spark-burst { 0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0.95; } 100% { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0.1); opacity: 0; } }
+        @media (prefers-reduced-motion: reduce) { .bubble, .cursor-bubble, .bubble-spark, .bubble-layer::before, .bubble-layer::after { animation: none; display: none; } }
+        h1 { margin: 0 0 20px; line-height: 0; }
+        .brand-logo { display: block; width: min(420px, 85vw); height: auto; }
+        .main-layout { display: flex; gap: 30px; flex-wrap: wrap; justify-content: center; align-items: flex-start; max-width: 1200px; width: 100%; }
+        
+        /* Camera Section */
+        .camera-card { background: rgba(35, 54, 41, 0.88); border: 1px solid rgba(167, 199, 144, 0.22); backdrop-filter: blur(8px); padding: 20px; border-radius: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); display: flex; flex-direction: column; align-items: center; width: 380px; }
+        .camera-box { position: relative; width: 340px; height: 255px; background: #000; border-radius: 12px; overflow: hidden; border: 3px solid #88ab75; /* Matcha Border */ }
+        video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); /* Mirror Effect */ }
+        .flash { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: white; opacity: 0; pointer-events: none; transition: opacity 0.1s ease-out; z-index: 10; }
+        .flash.active { opacity: 1; }
+        .countdown-overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 90px; color: #88ab75; /* Matcha Countdown */ font-weight: 900; text-shadow: 0 0 20px rgba(0,0,0,0.9); display: none; z-index: 5; }
+
+        /* Controls */
+        .controls { margin-top: 15px; display: flex; flex-direction: column; gap: 12px; width: 100%; }
+        
+        /* Matcha Button Styles */
+        button { 
+            background-color: #88ab75; /* Matcha Green */
+            color: #ffffff; 
+            border: 2px solid #769465; /* Darker Matcha Border */
+            padding: 12px 18px; 
+            font-size: 15px; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            transition: all 0.2s ease; 
+            font-weight: bold; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            gap: 8px; 
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+        button:hover { 
+            background-color: #99bc86; /* Lighter Matcha Hover */
+            transform: translateY(-2px); 
+            box-shadow: 0 6px 8px rgba(0,0,0,0.3);
+        }
+        button:active {
+            transform: translateY(1px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        button:disabled { 
+            background-color: #555; 
+            color: #888; 
+            border-color: #555;
+            cursor: not-allowed; 
+            transform: none; 
+            box-shadow: none;
+        }
+        
+        /* Action buttons use the same matcha style for consistency now */
+        .btn-action { 
+            background-color: #88ab75; 
+            border-color: #769465;
+        }
+        .btn-action:hover { 
+            background-color: #99bc86; 
+        }
+
+        .file-input-wrapper { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #d3ddcf; background: rgba(18, 32, 24, 0.78); padding: 10px; border-radius: 8px; border: 1px solid rgba(167, 199, 144, 0.25); }
+        .file-input-wrapper label { color: #88ab75; font-weight: bold; }
+        .file-input-wrapper select { padding: 8px; border-radius: 6px; border: 1px solid #607c57; background: #263b2d; color: #fff; }
+        .frame-status { color: #d3ddcf; line-height: 1.5; overflow-wrap: anywhere; }
+        .saved-photo-controls { display: grid; gap: 6px; padding-top: 8px; border-top: 1px solid rgba(167, 199, 144, 0.25); }
+        .saved-photo-controls select { min-width: 0; padding: 8px; border-radius: 6px; border: 1px solid #607c57; background: #263b2d; color: #fff; }
+        .saved-photo-controls button { font-size: 12px; padding: 9px; }
+        .public-upload-consent { display: flex; gap: 8px; align-items: flex-start; color: #d3ddcf; font-size: 12px; line-height: 1.4; }
+        .public-upload-consent input { flex: 0 0 auto; margin-top: 2px; accent-color: #88ab75; }
+
+        /* Result Section */
+        .result-card { background: rgba(35, 54, 41, 0.88); border: 1px solid rgba(167, 199, 144, 0.22); backdrop-filter: blur(8px); padding: 20px; border-radius: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); display: flex; flex-direction: column; align-items: center; }
+        .canvas-container { position: relative; width: 320px; height: 480px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); border-radius: 8px; overflow: hidden; background: #fff; border: 2px solid #444; }
+        canvas { width: 100%; height: 100%; display: block; }
+        
+        /* Retake overlay buttons on top of preview */
+        .slot-btn { 
+            position: absolute; 
+            pointer-events: auto; 
+            transform: translate(-50%, -50%); 
+            background: rgba(136, 171, 117, 0.9); /* Matcha Retake */
+            color: #ffffff; 
+            border: 1px solid #ffffff; 
+            padding: 6px 12px; 
+            font-size: 11px; 
+            border-radius: 20px; 
+            box-shadow: 0 2px 6px rgba(0,0,0,0.4); 
+            cursor: pointer; 
+            font-weight: bold; 
+            display: none; 
+            z-index: 100;
+            text-transform: none;
+            letter-spacing: 0;
+        }
+        .slot-btn:hover { 
+            background: #ffffff; 
+            color: #88ab75; 
+        }
+
+        .action-buttons { display: flex; gap: 12px; margin-top: 20px; width: 100%; }
+        .action-buttons button { flex: 1; font-size: 14px;}
+    </style>
+</head>
+<body>
+
+    <div class="bubble-layer" aria-hidden="true">
+        <span class="bubble" style="--left: 5%; --size: 64px; --duration: 17s; --delay: -8s;"></span>
+        <span class="bubble" style="--left: 14%; --size: 104px; --duration: 23s; --delay: -16s;"></span>
+        <span class="bubble" style="--left: 25%; --size: 78px; --duration: 19s; --delay: -4s;"></span>
+        <span class="bubble" style="--left: 36%; --size: 126px; --duration: 26s; --delay: -20s;"></span>
+        <span class="bubble" style="--left: 47%; --size: 58px; --duration: 16s; --delay: -11s;"></span>
+        <span class="bubble" style="--left: 58%; --size: 96px; --duration: 22s; --delay: -2s;"></span>
+        <span class="bubble" style="--left: 68%; --size: 72px; --duration: 18s; --delay: -14s;"></span>
+        <span class="bubble" style="--left: 77%; --size: 116px; --duration: 25s; --delay: -7s;"></span>
+        <span class="bubble" style="--left: 88%; --size: 82px; --duration: 20s; --delay: -18s;"></span>
+        <span class="bubble" style="--left: 96%; --size: 54px; --duration: 15s; --delay: -5s;"></span>
+    </div>
+    <h1><img class="brand-logo" src="Brand Malatcha (1).png" alt="Malatcha — Made by Lala"></h1>
+
+    <div class="main-layout">
+        <!-- Kamera & Pengaturan -->
+        <div class="camera-card">
+            <div class="camera-box">
+                <video id="webcam" autoplay playsinline></video>
+                <div id="flash-effect" class="flash"></div>
+                <div id="countdown" class="countdown-overlay">3</div>
+            </div>
+
+            <div class="controls">
+                <button id="btn-start" onclick="startPhotoSession()">
+                    <span>▶</span> Mulai Foto (6x Jepret)
+                </button>
+                <label class="public-upload-consent">
+                    <input id="public-upload-consent" type="checkbox">
+                    <span>Saya paham foto/frame yang diunggah akan disimpan di repository GitHub publik dan dapat dilihat siapa saja.</span>
+                </label>
+                
+                <div class="file-input-wrapper">
+                    <label for="frame-choice">Pilih Frame:</label>
+                    <select id="frame-choice" onchange="selectBuiltInFrame()">
+                        <option value="mono">Monokrom Chain</option>
+                        <option value="pink">Pink Photobooth</option>
+                        <option value="vintage">Vintage Stamp (6 Foto)</option>
+                        <option value="pop">Pop Art Strip (6 Foto)</option>
+                    </select>
+                </div>
+
+                <div class="file-input-wrapper">
+                    <label for="frame-upload">Upload Custom Frame PNG (4R):</label>
+                    <input type="file" id="frame-upload" accept="image/png" onchange="onFrameFileSelected(event)" style="color:#fff;">
+                    <button id="btn-analyze-frame" type="button" onclick="analyzeCustomFrame()" disabled>🔎 Analisis & Gunakan Frame</button>
+                    <div id="frame-status" class="frame-status" role="status" aria-live="polite">Upload PNG dengan bukaan transparan atau area hijau.</div>
+                    <button id="btn-storage-folder" type="button" onclick="chooseStorageFolder()">📁 Pilih Folder Penyimpanan</button>
+                    <div id="storage-status" class="frame-status" role="status" aria-live="polite">Pilih folder untuk menyimpan foto dan frame secara otomatis.</div>
+                    <div id="github-upload-status" class="frame-status" role="status" aria-live="polite">Upload GitHub belum dikonfigurasi. Worker gratis perlu di-deploy terlebih dahulu.</div>
+                    <div class="saved-photo-controls">
+                        <label for="saved-photo-choice">Gunakan foto tersimpan:</label>
+                        <select id="saved-photo-choice" aria-label="Pilih foto tersimpan" disabled>
+                            <option value="">Belum ada foto tersimpan</option>
+                        </select>
+                        <label for="saved-photo-position">Pilih posisi foto:</label>
+                        <select id="saved-photo-position" aria-label="Pilih posisi foto"></select>
+                        <button id="btn-use-saved-photo" type="button" onclick="useSavedPhoto()" disabled>Gunakan Foto Tersimpan</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Output Hasil Foto 4R -->
+        <div class="result-card">
+            <div class="canvas-container" id="canvas-container">
+                <!-- Canvas Resolusi Tinggi 4R (1200 x 1800 px) -->
+                <canvas id="photo-canvas" width="1200" height="1800"></canvas>
+
+            </div>
+
+            <div class="action-buttons">
+                <button id="btn-download" class="btn-action" onclick="downloadImage()" disabled>💾 Unduh</button>
+                <button id="btn-print" class="btn-action" onclick="printImage()" disabled>🖨️ Cetak</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const video = document.getElementById('webcam');
+        const flashEl = document.getElementById('flash-effect');
+        const countdownEl = document.getElementById('countdown');
+        const canvas = document.getElementById('photo-canvas');
+        const ctx = canvas.getContext('2d');
+        const btnStart = document.getElementById('btn-start');
+        const btnDownload = document.getElementById('btn-download');
+        const btnPrint = document.getElementById('btn-print');
+        const uploadConsent = document.getElementById('public-upload-consent');
+        const bubbleLayer = document.querySelector('.bubble-layer');
+        let archiveDirectory = null;
+        let uploadedFramesDirectory = null;
+        let lastArchivedFrameFile = null;
+        let lastGitHubFrameFile = null;
+        const savedPhotoHandles = new Map();
+        const UPLOAD_API_BASE = 'https://malatcha-v1-upload.YOUR-SUBDOMAIN.workers.dev';
+
+        if (window.matchMedia('(pointer: fine) and (prefers-reduced-motion: no-preference)').matches) {
+            let lastCursorBubbleAt = 0;
+            document.addEventListener('pointermove', event => {
+                const now = performance.now();
+                if (now - lastCursorBubbleAt < 75) return;
+                lastCursorBubbleAt = now;
+
+                const bubble = document.createElement('span');
+                bubble.className = 'cursor-bubble';
+                bubble.style.setProperty('--x', `${event.clientX}px`);
+                bubble.style.setProperty('--y', `${event.clientY}px`);
+                bubble.style.setProperty('--size', `${34 + Math.random() * 28}px`);
+                bubbleLayer.appendChild(bubble);
+                bubble.addEventListener('animationend', () => bubble.remove(), { once: true });
+            });
+
+            document.addEventListener('pointerdown', event => {
+                const bubble = document.createElement('span');
+                bubble.className = 'cursor-bubble burst';
+                bubble.style.setProperty('--x', `${event.clientX}px`);
+                bubble.style.setProperty('--y', `${event.clientY}px`);
+                bubble.style.setProperty('--size', '54px');
+                bubbleLayer.appendChild(bubble);
+                bubble.addEventListener('animationend', () => bubble.remove(), { once: true });
+
+                for (let i = 0; i < 7; i++) {
+                    const angle = (Math.PI * 2 * i) / 7;
+                    const distance = 28 + Math.random() * 20;
+                    const spark = document.createElement('span');
+                    spark.className = 'bubble-spark';
+                    spark.style.setProperty('--x', `${event.clientX}px`);
+                    spark.style.setProperty('--y', `${event.clientY}px`);
+                    spark.style.setProperty('--dx', `${Math.cos(angle) * distance}px`);
+                    spark.style.setProperty('--dy', `${Math.sin(angle) * distance}px`);
+                    bubbleLayer.appendChild(spark);
+                    spark.addEventListener('animationend', () => spark.remove(), { once: true });
+                }
+            });
+        }
+
+        let userFrame = null;
+        let capturedPhotos = [];
+        let frameLoaded = false;
+        let activeSlots = [];
+        let activeFrameKey = 'mono';
+
+        btnStart.disabled = true;
+        uploadConsent.addEventListener('change', () => {
+            btnStart.disabled = !uploadConsent.checked;
+            const file = document.getElementById('frame-upload').files[0];
+            if (uploadConsent.checked && file && file !== lastGitHubFrameFile) {
+                onFrameFileSelected({ target: { files: [file] } });
+            }
+        });
+
+        const frameOptions = {
+            mono: {
+                src: 'Pink%20Yellow%20and%20White%20Cute%20Photobooth%20Photostrip%20Print%20Photo%20Collage%20(1).png',
+                key: 'yellow',
+                expectedSlots: 6
+            },
+            pink: {
+                src: 'Pink%20Yellow%20and%20White%20Cute%20Photobooth%20Photostrip%20Print%20Photo%20Collage.png',
+                key: 'alpha',
+                expectedSlots: 5
+            },
+            vintage: {
+                src: 'Pink%20Yellow%20and%20White%20Cute%20Photobooth%20Photostrip%20Print%20Photo%20Collage%20(2).png',
+                key: 'green',
+                expectedSlots: 6,
+                slotOrder: 'row'
+            },
+            pop: {
+                src: 'Pink%20Yellow%20and%20White%20Cute%20Photobooth%20Photostrip%20Print%20Photo%20Collage%20(3).png',
+                key: 'green',
+                expectedSlots: 6
+            }
+        };
+
+        // Posisi tombol "Ganti Foto" mengikuti bukaan frame yang aktif.
+        function updateSlotButtonsPosition() {
+            const container = document.getElementById('canvas-container');
+            while (container.querySelectorAll('.slot-btn').length > activeSlots.length) {
+                container.querySelector('.slot-btn:last-of-type').remove();
+            }
+            activeSlots.forEach((slot, index) => {
+                let btn = document.getElementById(`btn-slot-${index}`);
+                if (!btn) {
+                    btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'slot-btn';
+                    btn.id = `btn-slot-${index}`;
+                    btn.textContent = `Ganti ${index + 1}`;
+                    btn.addEventListener('click', () => retakeSinglePhoto(index));
+                    container.appendChild(btn);
+                }
+                const leftPct = ((slot.x + slot.w / 2) / canvas.width) * 100;
+                const topPct = ((slot.y + slot.h - 35) / canvas.height) * 100;
+                btn.style.left = `${leftPct}%`;
+                btn.style.top = `${topPct}%`;
+                btn.style.display = 'none';
+            });
+            const slotChoice = document.getElementById('saved-photo-position');
+            const previousSlot = Number(slotChoice.value);
+            slotChoice.replaceChildren();
+            activeSlots.forEach((_, index) => {
+                const option = document.createElement('option');
+                option.value = String(index);
+                option.textContent = `Foto ${index + 1}`;
+                slotChoice.appendChild(option);
+            });
+            if (activeSlots.length) {
+                slotChoice.value = String(Math.min(Number.isNaN(previousSlot) ? 0 : previousSlot, activeSlots.length - 1));
+            }
+            document.getElementById('btn-use-saved-photo').disabled = savedPhotoHandles.size === 0 || !activeSlots.length;
+        }
+
+        async function writeFileToDirectory(directory, fileName, contents) {
+            const fileHandle = await directory.getFileHandle(fileName, { create: true });
+            const writable = await fileHandle.createWritable();
+            await writable.write(contents);
+            await writable.close();
+        }
+
+        async function chooseStorageFolder() {
+            const status = document.getElementById('storage-status');
+            if (!window.showDirectoryPicker) {
+                status.textContent = 'Penyimpanan otomatis folder memerlukan Chrome atau Edge terbaru.';
+                return;
+            }
+            try {
+                const root = await window.showDirectoryPicker({ mode: 'readwrite' });
+                archiveDirectory = await root.getDirectoryHandle('Frame + Foto Jepretan', { create: true });
+                uploadedFramesDirectory = await root.getDirectoryHandle('Frame Upload', { create: true });
+                status.textContent = 'Folder aktif: “Frame + Foto Jepretan” dan “Frame Upload”.';
+                await savePendingUploadedFrame();
+                await refreshSavedPhotos();
+            } catch (error) {
+                if (error.name === 'AbortError') return;
+                console.error('Gagal memilih folder penyimpanan:', error);
+                status.textContent = `Folder tidak dapat digunakan: ${error.message}`;
+            }
+        }
+
+        async function savePendingUploadedFrame() {
+            const file = document.getElementById('frame-upload').files[0];
+            if (!file || !archiveDirectory || !uploadedFramesDirectory || file === lastArchivedFrameFile) return;
+            const fileName = `frame-${Date.now()}-${file.name.replace(/[^\w.-]/g, '_')}`;
+            await writeFileToDirectory(archiveDirectory, fileName, file);
+            await writeFileToDirectory(uploadedFramesDirectory, fileName, file);
+            lastArchivedFrameFile = file;
+            document.getElementById('storage-status').textContent = `Frame tersimpan di “Frame + Foto Jepretan” dan “Frame Upload”: ${fileName}`;
+        }
+
+        function isGitHubUploadConfigured() {
+            return !UPLOAD_API_BASE.includes('YOUR-SUBDOMAIN');
+        }
+
+        async function uploadToGitHub(kind, file) {
+            const status = document.getElementById('github-upload-status');
+            if (!isGitHubUploadConfigured()) {
+                status.textContent = 'Belum diunggah ke GitHub. Atur URL Worker di UPLOAD_API_BASE setelah Worker di-deploy.';
+                return null;
+            }
+            if (!file || file.size > (kind === 'frame' ? 6 : 4) * 1024 * 1024) {
+                status.textContent = `Ukuran file melewati batas untuk ${kind === 'frame' ? 'frame (6 MB)' : 'foto (4 MB)'}.`;
+                return null;
+            }
+
+            try {
+                status.textContent = `Mengunggah ${kind === 'frame' ? 'frame' : 'foto'} ke GitHub...`;
+                const dataUrl = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result);
+                    reader.onerror = () => reject(new Error('File gagal dibaca oleh browser.'));
+                    reader.readAsDataURL(file);
+                });
+                const response = await fetch(`${UPLOAD_API_BASE}/api/uploads`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ kind, data: dataUrl.split(',')[1] })
+                });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
+                status.textContent = `${kind === 'frame' ? 'Frame' : 'Foto'} berhasil diunggah ke GitHub: ${result.paths.join(', ')}`;
+                return result;
+            } catch (error) {
+                console.error('Gagal mengunggah file ke GitHub:', error);
+                status.textContent = `Gagal mengunggah ke GitHub: ${error.message}${kind === 'photo' ? ' Foto tetap bisa diunduh di perangkat ini.' : ''}`;
+                return null;
+            }
+        }
+
+        async function refreshSavedPhotos() {
+            const select = document.getElementById('saved-photo-choice');
+            const useButton = document.getElementById('btn-use-saved-photo');
+            select.replaceChildren();
+            savedPhotoHandles.clear();
+            let photoCount = 0;
+            if (archiveDirectory) {
+                try {
+                    for await (const [name, handle] of archiveDirectory.entries()) {
+                        if (handle.kind !== 'file' || !/^foto-.*\.png$/i.test(name)) continue;
+                        const file = await handle.getFile();
+                        const id = `local:${name}`;
+                        const option = document.createElement('option');
+                        option.value = id;
+                        option.textContent = `${name} (komputer)`;
+                        select.appendChild(option);
+                        savedPhotoHandles.set(id, { file });
+                        photoCount++;
+                    }
+                } catch (error) {
+                    console.error('Gagal membaca foto dari folder lokal:', error);
+                    document.getElementById('storage-status').textContent = `Folder lokal tidak dapat dibaca: ${error.message}`;
+                }
+            }
+            if (isGitHubUploadConfigured()) {
+                try {
+                    const response = await fetch(`${UPLOAD_API_BASE}/api/photos`);
+                    const result = await response.json();
+                    if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
+                    (Array.isArray(result.photos) ? result.photos : []).forEach(photo => {
+                        const id = `github:${photo.name}`;
+                        const option = document.createElement('option');
+                        option.value = id;
+                        option.textContent = `${photo.name} (GitHub)`;
+                        select.appendChild(option);
+                        savedPhotoHandles.set(id, { url: `${UPLOAD_API_BASE}/api/photos/${encodeURIComponent(photo.name)}` });
+                        photoCount++;
+                    });
+                } catch (error) {
+                    console.error('Gagal memuat foto tersimpan dari GitHub:', error);
+                    document.getElementById('github-upload-status').textContent = `Tidak dapat memuat foto dari GitHub: ${error.message}. Foto baru tetap bisa diunduh di perangkat ini.`;
+                }
+            }
+            if (!photoCount) {
+                const option = document.createElement('option');
+                option.value = '';
+                option.textContent = isGitHubUploadConfigured() ? 'Belum ada foto tersimpan' : 'Atur Worker GitHub terlebih dahulu';
+                select.appendChild(option);
+            }
+            select.disabled = photoCount === 0;
+            useButton.disabled = photoCount === 0 || !activeSlots.length;
+            if (photoCount) {
+                document.getElementById('storage-status').textContent = `Folder siap. ${photoCount} foto tersimpan tersedia untuk dipakai kembali.`;
+            }
+        }
+
+        async function saveCapturedPhoto(index, blob) {
+            if (archiveDirectory) {
+                const fileName = `foto-${new Date().toISOString().replace(/[:.]/g, '-')}-foto-${index + 1}.png`;
+                try {
+                    await writeFileToDirectory(archiveDirectory, fileName, blob);
+                    document.getElementById('storage-status').textContent = `Foto tersimpan di “Frame + Foto Jepretan”: ${fileName}`;
+                } catch (error) {
+                    console.error('Gagal menyimpan foto secara lokal:', error);
+                    document.getElementById('storage-status').textContent = `Foto berhasil diambil tetapi gagal disimpan ke folder lokal: ${error.message}`;
+                }
+            }
+            await uploadToGitHub('photo', blob);
+            await refreshSavedPhotos();
+        }
+
+        async function useSavedPhoto() {
+            const id = document.getElementById('saved-photo-choice').value;
+            const savedPhoto = savedPhotoHandles.get(id);
+            const index = Number(document.getElementById('saved-photo-position').value);
+            if (!savedPhoto || !activeSlots[index]) return;
+
+            let imageUrl;
+            if (savedPhoto.file) {
+                imageUrl = URL.createObjectURL(savedPhoto.file);
+            } else {
+                imageUrl = savedPhoto.url;
+            }
+            const image = new Image();
+            if (savedPhoto.url) image.crossOrigin = 'anonymous';
+            image.onload = () => {
+                if (savedPhoto.file) URL.revokeObjectURL(imageUrl);
+                capturedPhotos[index] = image;
+                drawCanvas(true);
+                const complete = capturedPhotos.length > 0 && capturedPhotos.every(Boolean);
+                btnDownload.disabled = !complete;
+                btnPrint.disabled = !complete;
+                document.getElementById('storage-status').textContent = `${savedPhoto.file ? savedPhoto.file.name : id.slice(7)} digunakan sebagai Foto ${index + 1}.`;
+            };
+            image.onerror = () => {
+                if (savedPhoto.file) URL.revokeObjectURL(imageUrl);
+                document.getElementById('storage-status').textContent = `Foto tersimpan tidak dapat dibuka.`;
+            };
+            image.src = imageUrl;
+        }
+
+        // Inisialisasi Akses Kamera
+        navigator.mediaDevices.getUserMedia({ video: { width: 1280, height: 720 }, audio: false })
+            .then(stream => { video.srcObject = stream; })
+            .catch(err => { alert("Kamera tidak ditemukan: " + err); });
+
+        function drawSlotPath(context, slot) {
+            const { x, y, w, h, shape } = slot;
+            context.beginPath();
+            if (shape === 'heart') {
+                context.moveTo(x + w / 2, y + h * 0.98);
+                context.bezierCurveTo(x + w * 0.40, y + h * 0.86, x + w * 0.02, y + h * 0.60, x + w * 0.02, y + h * 0.38);
+                context.bezierCurveTo(x - w * 0.02, y + h * 0.12, x + w * 0.26, y, x + w / 2, y + h * 0.20);
+                context.bezierCurveTo(x + w * 0.74, y, x + w * 1.02, y + h * 0.12, x + w * 0.98, y + h * 0.38);
+                context.bezierCurveTo(x + w * 0.98, y + h * 0.60, x + w * 0.60, y + h * 0.86, x + w / 2, y + h * 0.98);
+            } else if (shape === 'circle') {
+                context.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2);
+            } else if (shape === 'roundRect') {
+                const radius = Math.min(55, w / 2, h / 2);
+                context.moveTo(x + radius, y);
+                context.lineTo(x + w - radius, y);
+                context.quadraticCurveTo(x + w, y, x + w, y + radius);
+                context.lineTo(x + w, y + h - radius);
+                context.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
+                context.lineTo(x + radius, y + h);
+                context.quadraticCurveTo(x, y + h, x, y + h - radius);
+                context.lineTo(x, y + radius);
+                context.quadraticCurveTo(x, y, x + radius, y);
+            } else if (shape === 'curtain') {
+                context.moveTo(x + w * 0.18, y);
+                context.lineTo(x + w * 0.82, y);
+                context.bezierCurveTo(x + w * 0.76, y + h * 0.18, x + w * 0.95, y + h * 0.30, x + w * 0.88, y + h * 0.50);
+                context.bezierCurveTo(x + w * 0.97, y + h * 0.72, x + w * 0.82, y + h * 0.86, x + w * 0.78, y + h);
+                context.lineTo(x + w * 0.20, y + h);
+                context.bezierCurveTo(x + w * 0.17, y + h * 0.80, x + w * 0.03, y + h * 0.66, x + w * 0.12, y + h * 0.48);
+                context.bezierCurveTo(x + w * 0.04, y + h * 0.28, x + w * 0.23, y + h * 0.16, x + w * 0.18, y);
+            } else {
+                context.rect(x, y, w, h);
+            }
+            context.closePath();
+        }
+
+        function makeTransparentFrame(image, option) {
+            const frameCanvas = document.createElement('canvas');
+            frameCanvas.width = canvas.width;
+            frameCanvas.height = canvas.height;
+            const frameCtx = frameCanvas.getContext('2d', { willReadFrequently: true });
+            const scale = Math.min(canvas.width / image.width, canvas.height / image.height);
+            const frameWidth = image.width * scale;
+            const frameHeight = image.height * scale;
+            frameCtx.drawImage(
+                image,
+                (canvas.width - frameWidth) / 2,
+                (canvas.height - frameHeight) / 2,
+                frameWidth,
+                frameHeight
+            );
+            const framePixels = frameCtx.getImageData(0, 0, canvas.width, canvas.height);
+            const pixelCount = canvas.width * canvas.height;
+            let detectionKey = option.key;
+            if (detectionKey === 'auto') {
+                let greenPixelCount = 0;
+                for (let i = 0; i < framePixels.data.length; i += 4) {
+                    const red = framePixels.data[i];
+                    const green = framePixels.data[i + 1];
+                    const blue = framePixels.data[i + 2];
+                    if (framePixels.data[i + 3] > 128 && green > 80 && green - red > 45 && green - blue > 40 && green > red * 1.25) {
+                        greenPixelCount++;
+                    }
+                }
+                detectionKey = greenPixelCount >= 5000 ? 'green' : 'alpha';
+            }
+            const visited = new Uint8Array(pixelCount);
+            const queue = new Int32Array(pixelCount);
+            const slots = [];
+            const isSlotPixel = index => {
+                const offset = index * 4;
+                if (detectionKey === 'alpha') return framePixels.data[offset + 3] === 0;
+                const red = framePixels.data[offset];
+                const green = framePixels.data[offset + 1];
+                const blue = framePixels.data[offset + 2];
+                if (detectionKey === 'green') {
+                    return green > 80 && green - red > 45 && green - blue > 40 && green > red * 1.25;
+                }
+                return red > 185 && green > 125 && blue < 135 && red - green > 35 && green - blue > 20;
+            };
+
+            for (let start = 0; start < pixelCount; start++) {
+                if (visited[start] || !isSlotPixel(start)) continue;
+                let head = 0;
+                let tail = 0;
+                let minX = canvas.width;
+                let minY = canvas.height;
+                let maxX = 0;
+                let maxY = 0;
+                let touchesEdge = false;
+                visited[start] = 1;
+                queue[tail++] = start;
+
+                while (head < tail) {
+                    const index = queue[head++];
+                    const x = index % canvas.width;
+                    const y = Math.floor(index / canvas.width);
+                    minX = Math.min(minX, x);
+                    minY = Math.min(minY, y);
+                    maxX = Math.max(maxX, x);
+                    maxY = Math.max(maxY, y);
+                    if (x === 0 || y === 0 || x === canvas.width - 1 || y === canvas.height - 1) touchesEdge = true;
+
+                    const neighbors = [
+                        x > 0 ? index - 1 : -1,
+                        x < canvas.width - 1 ? index + 1 : -1,
+                        y > 0 ? index - canvas.width : -1,
+                        y < canvas.height - 1 ? index + canvas.width : -1
+                    ];
+                    neighbors.forEach(neighbor => {
+                        if (neighbor >= 0 && !visited[neighbor] && isSlotPixel(neighbor)) {
+                            visited[neighbor] = 1;
+                            queue[tail++] = neighbor;
+                        }
+                    });
+                }
+
+                if (tail < 5000 || (option.excludeEdgeComponents && detectionKey === 'alpha' && touchesEdge)) {
+                    if (option.key === 'yellow') {
+                        for (let i = 0; i < tail; i++) {
+                            const offset = queue[i] * 4;
+                            const gray = Math.round(framePixels.data[offset] * 0.299 + framePixels.data[offset + 1] * 0.587 + framePixels.data[offset + 2] * 0.114);
+                            framePixels.data[offset] = gray;
+                            framePixels.data[offset + 1] = gray;
+                            framePixels.data[offset + 2] = gray;
+                        }
+                    }
+                    continue;
+                }
+                const slot = { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 };
+                const slotMask = document.createElement('canvas');
+                slotMask.width = slot.w;
+                slotMask.height = slot.h;
+                const maskCtx = slotMask.getContext('2d');
+                const maskPixels = maskCtx.createImageData(slot.w, slot.h);
+                for (let i = 0; i < tail; i++) {
+                    const index = queue[i];
+                    const x = index % canvas.width;
+                    const y = Math.floor(index / canvas.width);
+                    const sourceOffset = index * 4;
+                    const maskOffset = ((y - minY) * slot.w + x - minX) * 4;
+                    maskPixels.data[maskOffset + 3] = detectionKey === 'alpha'
+                        ? 255 - framePixels.data[sourceOffset + 3]
+                        : 255;
+                    if (detectionKey !== 'alpha') framePixels.data[sourceOffset + 3] = 0;
+                }
+                maskCtx.putImageData(maskPixels, 0, 0);
+                slot.maskCanvas = slotMask;
+                slots.push(slot);
+            }
+
+            if (option.key === 'yellow') {
+                for (let i = 0; i < framePixels.data.length; i += 4) {
+                    if (framePixels.data[i + 3] === 0) continue;
+                    const red = framePixels.data[i];
+                    const green = framePixels.data[i + 1];
+                    const blue = framePixels.data[i + 2];
+                    const max = Math.max(red, green, blue);
+                    const min = Math.min(red, green, blue);
+                    const delta = max - min;
+                    if (!delta) continue;
+                    let hue = max === red
+                        ? 60 * (((green - blue) / delta) % 6)
+                        : max === green
+                            ? 60 * ((blue - red) / delta + 2)
+                            : 60 * ((red - green) / delta + 4);
+                    if (hue < 0) hue += 360;
+                    const saturation = delta / (255 - Math.abs(max + min - 255));
+                    if (hue >= 35 && hue <= 75 && saturation > 0.08) {
+                        const gray = Math.round(red * 0.299 + green * 0.587 + blue * 0.114);
+                        framePixels.data[i] = gray;
+                        framePixels.data[i + 1] = gray;
+                        framePixels.data[i + 2] = gray;
+                    }
+                }
+            }
+
+            slots.sort(option.slotOrder === 'row'
+                ? (a, b) => a.y - b.y || a.x - b.x
+                : (a, b) => a.x - b.x || a.y - b.y);
+            if (option.expectedSlots != null && slots.length !== option.expectedSlots) {
+                throw new Error(`Terdeteksi ${slots.length} bukaan foto, seharusnya ${option.expectedSlots}.`);
+            }
+            if (!slots.length) {
+                throw new Error('Bukaan foto tidak terdeteksi. Gunakan area hijau terang atau bukaan transparan yang terpisah dari tepi gambar.');
+            }
+            frameCtx.putImageData(framePixels, 0, 0);
+            return { frame: frameCanvas, slots, detectionKey };
+        }
+
+        function selectBuiltInFrame() {
+            const option = frameOptions[document.getElementById('frame-choice').value];
+            activeFrameKey = document.getElementById('frame-choice').value;
+            const image = new Image();
+            image.onload = () => {
+                try {
+                    const result = makeTransparentFrame(image, option);
+                    userFrame = result.frame;
+                    activeSlots = result.slots;
+                    capturedPhotos = new Array(activeSlots.length).fill(null);
+                    frameLoaded = true;
+                    btnStart.innerHTML = `<span>▶</span> Mulai Foto (${activeSlots.length}x Jepret)`;
+                    btnDownload.disabled = true;
+                    btnPrint.disabled = true;
+                    updateSlotButtonsPosition();
+                    drawCanvas(false);
+                } catch (error) {
+                    console.error('Gagal memproses frame:', error);
+                    alert(`Frame gagal diproses: ${error.message}`);
+                }
+            };
+            image.onerror = () => alert(`Gambar frame tidak ditemukan: ${option.src}`);
+            image.src = option.src;
+        }
+
+        document.getElementById('frame-choice').value = 'mono';
+        activeSlots = [];
+        capturedPhotos = [];
+        updateSlotButtonsPosition();
+        selectBuiltInFrame();
+
+        // Render Canvas Utama
+        function drawCanvas(showRetakeButtons = false, currentPhotoIndex = -1) {
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 1. Gambar Foto (di bawah frame)
+            activeSlots.forEach((slot, i) => {
+                if (capturedPhotos[i]) {
+                    ctx.save();
+                    const img = capturedPhotos[i];
+                    const imgRatio = img.width / img.height;
+                    const slotRatio = slot.w / slot.h;
+                    let drawW, drawH, drawX, drawY;
+
+                    if (imgRatio > slotRatio) {
+                        drawH = slot.h;
+                        drawW = slot.h * imgRatio;
+                        drawX = slot.x - (drawW - slot.w) / 2;
+                        drawY = slot.y;
+                    } else {
+                        drawW = slot.w;
+                        drawH = slot.w / imgRatio;
+                        drawX = slot.x;
+                        drawY = slot.y - (drawH - slot.h) / 2;
+                    }
+
+                    if (slot.maskCanvas) {
+                        const photoCanvas = document.createElement('canvas');
+                        photoCanvas.width = slot.maskCanvas.width;
+                        photoCanvas.height = slot.maskCanvas.height;
+                        const photoCtx = photoCanvas.getContext('2d');
+                        photoCtx.translate(drawX + drawW - slot.x, drawY - slot.y);
+                        photoCtx.scale(-1, 1);
+                        photoCtx.filter = activeFrameKey === 'mono' ? 'grayscale(100%)' : 'none';
+                        photoCtx.drawImage(img, 0, 0, drawW, drawH);
+                        photoCtx.setTransform(1, 0, 0, 1, 0, 0);
+                        photoCtx.filter = 'none';
+                        photoCtx.globalCompositeOperation = 'destination-in';
+                        photoCtx.drawImage(slot.maskCanvas, 0, 0);
+                        ctx.drawImage(photoCanvas, slot.x, slot.y);
+                    } else {
+                        drawSlotPath(ctx, slot);
+                        ctx.clip();
+                        ctx.translate(drawX + drawW, drawY);
+                        ctx.scale(-1, 1);
+                        ctx.drawImage(img, 0, 0, drawW, drawH);
+                    }
+                    ctx.restore();
+                } else {
+                    // Placeholder hitam agar area foto jelas saat countdown jika frame belum dimuat
+                    // Jika frame default sudah dimuat, area ini akan tertutup batas SVG
+                    if (!frameLoaded && !userFrame) {
+                        ctx.fillStyle = '#000000';
+                        ctx.fillRect(slot.x, slot.y, slot.w, slot.h);
+                    }
+                }
+            });
+
+            // 2. Gambar Bingkai (di atas foto, jika tersedia)
+            if (userFrame && frameLoaded) {
+                ctx.drawImage(userFrame, 0, 0, canvas.width, canvas.height);
+            }
+
+            // 3. Tampilkan/Sembunyikan tombol ganti foto
+            activeSlots.forEach((_, index) => {
+                const btn = document.getElementById(`btn-slot-${index}`);
+                if (btn) {
+                    // Tampilkan hanya jika sesi selesai atau mode retake
+                    const shouldShow = (showRetakeButtons && capturedPhotos[index]) || (currentPhotoIndex === index);
+                    btn.style.display = shouldShow ? 'block' : 'none';
+                }
+            });
+        }
+
+        async function onFrameFileSelected(event) {
+            const file = event.target.files[0];
+            const analyzeButton = document.getElementById('btn-analyze-frame');
+            analyzeButton.disabled = !file;
+            document.getElementById('frame-status').textContent = file
+                ? `File dipilih: ${file.name}. Klik “Analisis & Gunakan Frame”.`
+                : 'Upload PNG dengan bukaan transparan atau area hijau.';
+            if (file && archiveDirectory) {
+                try {
+                    await savePendingUploadedFrame();
+                } catch (error) {
+                    console.error('Gagal menyimpan frame unggahan:', error);
+                    document.getElementById('storage-status').textContent = `Frame terpilih tetapi gagal disimpan: ${error.message}`;
+                }
+            }
+            if (file && !uploadConsent.checked) {
+                document.getElementById('github-upload-status').textContent = 'Frame dipilih, tetapi belum diunggah. Setujui penyimpanan publik untuk mengirimnya ke GitHub.';
+            } else if (file && file !== lastGitHubFrameFile) {
+                const result = await uploadToGitHub('frame', file);
+                if (result) lastGitHubFrameFile = file;
+            }
+        }
+
+        function analyzeCustomFrame() {
+            const file = document.getElementById('frame-upload').files[0];
+            const status = document.getElementById('frame-status');
+            const analyzeButton = document.getElementById('btn-analyze-frame');
+            if (!file) {
+                status.textContent = 'Pilih file PNG terlebih dahulu.';
+                return;
+            }
+
+            analyzeButton.disabled = true;
+            status.textContent = 'Sedang menganalisis posisi bukaan foto...';
+            const image = new Image();
+            const imageUrl = URL.createObjectURL(file);
+            image.onload = () => {
+                try {
+                    const result = makeTransparentFrame(image, {
+                        key: 'auto',
+                        expectedSlots: null,
+                        excludeEdgeComponents: true,
+                        slotOrder: 'row'
+                    });
+                    userFrame = result.frame;
+                    frameLoaded = true;
+                    activeFrameKey = 'custom';
+                    activeSlots = result.slots;
+                    capturedPhotos = new Array(activeSlots.length).fill(null);
+                    btnStart.innerHTML = `<span>▶</span> Mulai Foto (${activeSlots.length}x Jepret)`;
+                    btnDownload.disabled = true;
+                    btnPrint.disabled = true;
+                    updateSlotButtonsPosition();
+                    drawCanvas(false);
+
+                    const positions = activeSlots.map((slot, index) => {
+                        const x = Math.round(((slot.x + slot.w / 2) / canvas.width) * 100);
+                        const y = Math.round(((slot.y + slot.h / 2) / canvas.height) * 100);
+                        return `${index + 1} (X ${x}%, Y ${y}%)`;
+                    });
+                    const keyLabel = result.detectionKey === 'green' ? 'area hijau' : 'bukaan transparan';
+                    status.textContent = `Berhasil: ${activeSlots.length} bukaan terdeteksi dari ${keyLabel}. Posisi: ${positions.join('; ')}.`;
+                } catch (error) {
+                    console.error('Gagal menganalisis frame:', error);
+                    status.textContent = `Frame tidak dapat dianalisis: ${error.message}`;
+                } finally {
+                    URL.revokeObjectURL(imageUrl);
+                    analyzeButton.disabled = false;
+                }
+            };
+            image.onerror = () => {
+                URL.revokeObjectURL(imageUrl);
+                analyzeButton.disabled = false;
+                status.textContent = 'File PNG tidak dapat dibuka. Coba pilih file lain.';
+            };
+            image.src = imageUrl;
+        }
+
+        // Sesi Foto Otomatis 6x Jepret
+        async function startPhotoSession() {
+            if (!uploadConsent.checked) {
+                document.getElementById('github-upload-status').textContent = 'Setujui penyimpanan publik terlebih dahulu sebelum mengambil foto.';
+                return;
+            }
+            capturedPhotos = new Array(activeSlots.length).fill(null);
+            btnStart.disabled = true;
+            btnDownload.disabled = true;
+            btnPrint.disabled = true;
+            
+            // Sembunyikan semua tombol ganti foto saat sesi mulai
+            drawCanvas(false); 
+
+            for (let i = 0; i < activeSlots.length; i++) {
+                await runCountdown(3);
+                triggerFlash();
+                // Tunggu foto dimuat
+                const photoBlob = await capturePhotoToIndex(i);
+                await saveCapturedPhoto(i, photoBlob);
+                // Tampilkan foto yang baru diambil langsung
+                drawCanvas(false);
+                await new Promise(resolve => setTimeout(resolve, 500)); // Jeda sedikit
+            }
+
+            // Sesi selesai, aktifkan tombol unduh & cetak, tampilkan tombol ganti
+            drawCanvas(true); 
+            btnStart.disabled = false;
+            btnDownload.disabled = false;
+            btnPrint.disabled = false;
+        }
+
+        // Ganti / Retake 1 Foto Spesifik
+        async function retakeSinglePhoto(index) {
+            if (!uploadConsent.checked) {
+                document.getElementById('github-upload-status').textContent = 'Setujui penyimpanan publik terlebih dahulu sebelum mengambil ulang foto.';
+                return;
+            }
+            btnStart.disabled = true;
+            btnDownload.disabled = true;
+            btnPrint.disabled = true;
+            // Tampilkan tombol ganti untuk foto yang sedang diambil ulang
+            drawCanvas(false, index); 
+
+            await runCountdown(3);
+            triggerFlash();
+            const photoBlob = await capturePhotoToIndex(index);
+            await saveCapturedPhoto(index, photoBlob);
+            // Tampilkan semua tombol ganti kembali
+            drawCanvas(true); 
+
+            btnStart.disabled = false;
+            btnDownload.disabled = false;
+            btnPrint.disabled = false;
+        }
+
+        // Hitung Mundur (Countdown)
+        function runCountdown(seconds) {
+            return new Promise(resolve => {
+                let counter = seconds;
+                countdownEl.style.display = 'block';
+                countdownEl.innerText = counter;
+
+                const interval = setInterval(() => {
+                    counter--;
+                    if (counter > 0) {
+                        countdownEl.innerText = counter;
+                    } else {
+                        clearInterval(interval);
+                        countdownEl.style.display = 'none';
+                        resolve();
+                    }
+                }, 1000);
+            });
+        }
+
+        // Efek Kedip (Flash)
+        function triggerFlash() {
+            flashEl.classList.add('active');
+            setTimeout(() => {
+                flashEl.classList.remove('active');
+            }, 150);
+        }
+
+        // Simpan Hasil Tangkapan Kamera ke Index Tertentu
+        function capturePhotoToIndex(index) {
+            return new Promise((resolve, reject) => {
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = video.videoWidth;
+                tempCanvas.height = video.videoHeight;
+                const tempCtx = tempCanvas.getContext('2d');
+                tempCtx.drawImage(video, 0, 0);
+
+                tempCanvas.toBlob(blob => {
+                    if (!blob) {
+                        reject(new Error('Browser gagal membuat file foto PNG.'));
+                        return;
+                    }
+                    const imageUrl = URL.createObjectURL(blob);
+                    const img = new Image();
+                    img.onload = () => {
+                        capturedPhotos[index] = img;
+                        URL.revokeObjectURL(imageUrl);
+                        resolve(blob);
+                    };
+                    img.onerror = () => {
+                        URL.revokeObjectURL(imageUrl);
+                        reject(new Error('Foto hasil kamera tidak dapat dibuka kembali.'));
+                    };
+                    img.src = imageUrl;
+                }, 'image/png');
+            });
+        }
+
+        // Unduh Gambar 4R High-Res
+        function downloadImage() {
+            const link = document.createElement('a');
+            link.download = 'Malatcha-Photo-Corner-4R.jpg';
+            link.href = canvas.toDataURL('image/jpeg', 0.95);
+            link.click();
+        }
+
+        // Cetak Gambar
+        function printImage() {
+            const dataUrl = canvas.toDataURL('image/png');
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <html>
+                    <head>
+                        <title>Cetak - Malatcha Photo Corner</title>
+                        <style>
+                            @page { size: 4in 6in; margin: 0; }
+                            body { margin: 0; display: flex; justify-content: center; align-items: center; }
+                            img { width: 100%; height: 100vh; object-fit: contain; }
+                        </style>
+                    </head>
+                    <body>
+                        <img src="${dataUrl}" onload="window.print(); window.close();" />
+                    </body>
+                </html>
+            `);
+            printWindow.document.close();
+        }
+    </script>
+</body>
+</html>

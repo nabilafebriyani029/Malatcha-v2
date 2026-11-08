@@ -1,0 +1,9 @@
+name = "malatcha-v1-upload"
+main = "src/index.js"
+compatibility_date = "2025-03-01"
+
+[vars]
+GITHUB_OWNER = "nabilafebriyani029"
+GITHUB_REPO = "Malatcha-v1"
+GITHUB_BRANCH = "main"
+ALLOWED_ORIGIN = "https://nabilafebriyani029.github.io"
